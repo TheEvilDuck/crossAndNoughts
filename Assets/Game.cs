@@ -165,7 +165,10 @@ public class Game : MonoBehaviour
             if (_currentPlayerId>=_playersCount)
                  _currentPlayerId = 0;
             _visuals.UpdateCurrentPlayerImage(_players[_currentPlayerId]._cellType);
-            _visuals.UpdateText(string.Format("Now player's {0} turn",_currentPlayerId+1));
+            string bot = "";
+            if (!_players[_currentPlayerId]._isHuman)
+                bot = "(Bot)";
+            _visuals.UpdateText(string.Format("Now player's {0} {1} turn",_currentPlayerId+1,bot));
             if (!_players[_currentPlayerId]._isHuman)
                 BotTurn();
         }
