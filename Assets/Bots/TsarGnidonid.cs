@@ -3,93 +3,114 @@ using System.Collections.Generic;
 using System;
 [CreateAssetMenu(menuName ="Bots/Tsar Gnidonid bot")]
 public class TsarGnidonid : Bot
-{
-    private CellType _cellType;
-    private Vector2Int _lastDecision;
-    CellType[,]lastField;
-    List<CellType>playersTurnBeforeBot = new List<CellType>();
+{   
+    Vector2Int _lastDecision;
+    CellType _botCellType = CellType.Empty;
+    int _fieldSize;
+    List<CellType>_cellTypeBeforeBotTurn = new List<CellType>();
+    List<CellType>_cellTypeAfterBotTurn = new List<CellType>();
+    Array AllCellTypes = Enum.GetValues(typeof(CellType));
+    Vector2Int _rowDirection;
+    
     public override Vector2Int GetBotDecision(CellType[,] field,int inARowToWin)
     {
         
-        Array AllCellTypes = Enum.GetValues(typeof(CellType));
-        int fieldSize = field.GetLength(0);
-        List<Vector2Int>possibleDecisions = new List<Vector2Int>();
+        List<Vector2Int>possibleDesicions = GetPossibleDecisions(field);
         List<Vector2Int>mainDecisions = new List<Vector2Int>();
-        List<Vector2Int>notTooGoodDecisions = new List<Vector2Int>();
-        List<Vector2Int>tryingToStartARowDecisions = new List<Vector2Int>();
-
-        if (lastField==null)
-        {
-            lastField = new CellType[fieldSize,fieldSize];
-            for (int x = 0;x<fieldSize;x++)
-            {
-                for (int y = 0;y<fieldSize;y++)
-                {
-                    lastField[x,y] = CellType.Empty;
-                }
-            }
-        }
+        List<Vector2Int>cancelNextPlayerWinDecisions = new List<Vector2Int>();
+        List<Vector2Int>cancelPreviosPlayerWinDecisions = new List<Vector2Int>();
+        List<Vector2Int>turnNearEnemyDecisions = new List<Vector2Int>();
+        List<Vector2Int>tryToMakeARowDecisions = new List<Vector2Int>();
         
-        for (int x = 0;x<fieldSize;x++)
-        {
-            for (int y = 0;y<fieldSize;y++)
+        _fieldSize = field.GetLength(0);
+
+
+        if (_lastDecision==null)
             {
-                if (field[x,y]==CellType.Empty)
-                    possibleDecisions.Add(new Vector2Int(x,y));
-                if (lastField[x,y]!=field[x,y])
+                for (int x = 0;x<_fieldSize;x++)
                 {
-                    if (!playersTurnBeforeBot.Contains(field[x,y]))
-                        playersTurnBeforeBot.Add(field[x,y]);
-                }
-            }
-        }
-        if (_lastDecision!=null)
-        {
-            _cellType = field[_lastDecision.x,_lastDecision.y];
-            playersTurnBeforeBot.Add(_cellType);
-            foreach (Vector2Int possibleDecision in possibleDecisions)
-            {
-                foreach (CellType cellType in AllCellTypes)
-                {
-                    if (cellType == CellType.Empty)continue;
-                    CellType[,]fieldCopy = new CellType[fieldSize,fieldSize];
-                    fieldCopy = field.Clone() as CellType[,];
-                    fieldCopy[possibleDecision.x,possibleDecision.y] = cellType;
-                    if (CheckRow(possibleDecision.x,possibleDecision.y,cellType,fieldCopy,inARowToWin))
+                    for (int y = 0;y<_fieldSize;y++)
                     {
-                        foreach (CellType cellTypeOfOther in playersTurnBeforeBot)
+                        if (!_cellTypeBeforeBotTurn.Contains(field[x,y])&&field[x,y]!=CellType.Empty)
                         {
-                            if (cellType==cellTypeOfOther)
+                            _cellTypeBeforeBotTurn.Add(field[x,y]);
+                            foreach (Vector2Int possibleDecision in possibleDesicions)
                             {
-                                if (cellType==_cellType)
-                                mainDecisions.Add(possibleDecision);
-                                else
-                                notTooGoodDecisions.Add(possibleDecision);
-                                continue;
+                                if ((possibleDecision-new Vector2Int(x,y)).magnitude<=1)
+                                    turnNearEnemyDecisions.Add(possibleDecision);
                             }
                         }
                     }
                 }
-                if ((possibleDecision-_lastDecision).magnitude<2)
+            }
+
+        else
+            {
+                if (_botCellType==CellType.Empty)
+                    _botCellType = field[_lastDecision.x,_lastDecision.y];
+                for (int x = 0;x<_fieldSize;x++)
                 {
-                    tryingToStartARowDecisions.Add(possibleDecision);
+                    for (int y = 0;y<_fieldSize;y++)
+                    {
+                        if (!_cellTypeAfterBotTurn.Contains(field[x,y])
+                        &&!_cellTypeBeforeBotTurn.Contains(field[x,y])
+                        &&field[x,y]!=CellType.Empty
+                        &&field[x,y]!=_botCellType)
+                            _cellTypeAfterBotTurn.Add(field[x,y]);
+                    }
                 }
-        }
-        }
-        lastField = field;
-        if (mainDecisions.Count>0)
-        {
-            return mainDecisions[UnityEngine.Random.Range(0,mainDecisions.Count-1)];
-        }
-        if (notTooGoodDecisions.Count>0)
-        {
-            return notTooGoodDecisions[UnityEngine.Random.Range(0,notTooGoodDecisions.Count-1)];
-        }
-        if (tryingToStartARowDecisions.Count>0)
-        {
-            return tryingToStartARowDecisions[UnityEngine.Random.Range(0,tryingToStartARowDecisions.Count-1)];
-        }
-        _lastDecision = possibleDecisions[UnityEngine.Random.Range(0,possibleDecisions.Count-1)];
+                foreach (CellType cellType in AllCellTypes)
+                {
+                    foreach (Vector2Int possibleDecision in possibleDesicions)
+                    {
+                        CellType[,]fieldCopy = field.Clone() as CellType[,];
+                        fieldCopy[possibleDecision.x,possibleDecision.y] = cellType;
+                        if (CheckRow(possibleDecision.x,possibleDecision.y,cellType,fieldCopy,inARowToWin))
+                        {
+                            if (cellType==_botCellType)
+                                mainDecisions.Add(possibleDecision);
+                            else
+                            {
+                                if (_cellTypeAfterBotTurn.Contains(cellType))
+                                    cancelNextPlayerWinDecisions.Add(possibleDecision);
+                                if (_cellTypeBeforeBotTurn.Contains(cellType))
+                                    cancelNextPlayerWinDecisions.Add(possibleDecision);
+                            }
+                        }
+                        else if ((possibleDecision-_lastDecision).magnitude<=1)
+                            {
+                                if (cellType==_botCellType)
+                                {
+                                    Vector2Int direction = possibleDecision-_lastDecision;
+                                    if (possibleDesicions.Contains(possibleDecision+direction))
+                                        tryToMakeARowDecisions.Add(possibleDecision);
+                                }
+                            }
+                    }
+                }
+            }
+        if (mainDecisions.Count!=0)
+            _lastDecision = mainDecisions[UnityEngine.Random.Range(0,mainDecisions.Count-1)];
+        else if (cancelNextPlayerWinDecisions.Count!=0)
+            _lastDecision = cancelNextPlayerWinDecisions[UnityEngine.Random.Range(0,cancelNextPlayerWinDecisions.Count-1)];
+        else if (cancelPreviosPlayerWinDecisions.Count!=0)
+            _lastDecision = cancelPreviosPlayerWinDecisions[UnityEngine.Random.Range(0,cancelPreviosPlayerWinDecisions.Count-1)];
+        else if (tryToMakeARowDecisions.Count!=0)
+            {
+                Vector2Int decision = tryToMakeARowDecisions[UnityEngine.Random.Range(0,tryToMakeARowDecisions.Count-1)];
+                if (_rowDirection!=null)
+                {
+                    if (possibleDesicions.Contains(_lastDecision+_rowDirection))
+                        decision = _lastDecision+_rowDirection;
+                }
+                _rowDirection = decision-_lastDecision;
+                _lastDecision = decision;
+            }
+        else if (turnNearEnemyDecisions.Count!=0)
+            _lastDecision = turnNearEnemyDecisions[UnityEngine.Random.Range(0,turnNearEnemyDecisions.Count-1)];
+        else if (possibleDesicions.Count>0)
+            _lastDecision = possibleDesicions[UnityEngine.Random.Range(0,possibleDesicions.Count-1)];
+        
         return _lastDecision;
     }
 }

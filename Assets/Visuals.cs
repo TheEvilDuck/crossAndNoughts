@@ -5,7 +5,7 @@ using TMPro;
 
 public class Visuals : MonoBehaviour
 {
-    [SerializeField]float _cellSize = 0.1f;
+    [SerializeField]float _cellSize = 2f;
     [SerializeField]float _scalePerFieldSize = 0.9f;
     [SerializeField]float _cellSpacing = 0.1f;
     [SerializeField]GameObject _cellPrefab;
@@ -15,27 +15,36 @@ public class Visuals : MonoBehaviour
     private Cell[,]_fieldVisual;
     private Dictionary<CellType,CellVisual>_playersCellVisuals;
 
+
     public Cell[,] InitVisuals(int fieldSize)
     {
         ClearField();
         _fieldVisual = new Cell[fieldSize,fieldSize];
-        Vector3 size = Vector3.zero;
+        Vector3 cellActualSize = _cellPrefab.transform.GetComponent<SpriteRenderer>().bounds.size;
+        float scalePerFieldSize = fieldSize*_scalePerFieldSize;
+        float aspectRation = Camera.main.aspect;
+        Vector3 size = cellActualSize*_cellSize/scalePerFieldSize*aspectRation;
         for (int x = 0;x<fieldSize;x++)
         {
             for (int y = 0;y<fieldSize;y++)
             {
                 Vector3 position = new Vector3(0,0,1);
                 GameObject obj = Instantiate(_cellPrefab,position,Quaternion.identity,transform);
-                size = obj.GetComponent<SpriteRenderer>().bounds.size;
-                obj.transform.localScale*=_cellSize/(_scalePerFieldSize*fieldSize);
-                Vector3 translate = new Vector3(x*size.x/(_scalePerFieldSize*fieldSize)*_cellSize,y*size.y/(_scalePerFieldSize*fieldSize)*_cellSize,0);
-                obj.transform.Translate(translate);
+                obj.transform.localScale*=_cellSize/scalePerFieldSize*aspectRation;;
                 _fieldVisual[x,y] = obj.GetComponent<Cell>();
                 _fieldVisual[x,y].SetCoordinates(x,y);
-
+                obj.transform.Translate(new Vector3(
+                    x*size.x,
+                    y*size.y,
+                    0
+                ));
+                
             }
         }
-        //Camera.main.transform.position = new Vector3(size.x*fieldSize/2f/(_scalePerFieldSize*fieldSize)*_cellSize,size.y*fieldSize/2f/(_scalePerFieldSize*fieldSize)*_cellSize,0);
+        transform.Translate(new Vector3(
+            -(fieldSize-1)/2f*size.x,
+            -(fieldSize-1)/2f*size.y,
+            0));
         return _fieldVisual;
 
     }
@@ -76,9 +85,16 @@ public class Visuals : MonoBehaviour
         {
             for (int y = 0;y<_fieldVisual.GetLength(1);y++)
             {
-                _fieldVisual[x,y]._cellClicked.RemoveAllListeners();
+                _fieldVisual[x,y]?._cellClicked.RemoveAllListeners();
                 Destroy(_fieldVisual[x,y].gameObject);
             }
+        }
+    }
+    public void WinRowChangeColor(List<Vector2Int>row)
+    {
+        foreach (Vector2Int cell in row)
+        {
+            _fieldVisual[cell.x,cell.y].gameObject.GetComponent<SpriteRenderer>().color = new Color(1,0,0);
         }
     }
 }

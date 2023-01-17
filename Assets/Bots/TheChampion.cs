@@ -10,18 +10,10 @@ public class TheChampion : Bot
     {
         Array AllCellTypes = Enum.GetValues(typeof(CellType));
         int fieldSize = field.GetLength(0);
-        List<Vector2Int>possibleDecisions = new List<Vector2Int>();
+        List<Vector2Int>possibleDecisions = GetPossibleDecisions(field);
         List<Vector2Int>mainDecisions = new List<Vector2Int>();
         List<Vector2Int>notTooGoodDecisions = new List<Vector2Int>();
         List<Vector2Int>tryingToStartARowDecisions = new List<Vector2Int>();
-        for (int x = 0;x<fieldSize;x++)
-        {
-            for (int y = 0;y<fieldSize;y++)
-            {
-                if (field[x,y]==CellType.Empty)
-                    possibleDecisions.Add(new Vector2Int(x,y));
-            }
-        }
         if (_lastDecision!=null)
         {
             _cellType = field[_lastDecision.x,_lastDecision.y];

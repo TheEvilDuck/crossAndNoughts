@@ -7,12 +7,28 @@ public class Cell : MonoBehaviour
     [SerializeField]SpriteRenderer spriteRenderer;
     public CellClickedEvent _cellClicked;
     private int _x,_y;
+    private bool _canClick;
     private void Awake() {
         _cellClicked = new CellClickedEvent();
     }
-    void OnMouseDown()
-    {
-        _cellClicked.Invoke(_x,_y);
+    private void OnMouseUp() {
+        if (_canClick)
+        {
+            _cellClicked?.Invoke(_x,_y);
+        }
+    }
+    private void OnMouseDown() {
+        _canClick = true;
+    }
+    private void OnMouseOver() {
+        if (Input.touchCount!=0)
+        {
+            if (Input.touches[0].deltaPosition.magnitude>0.1f)
+                _canClick = false;
+        }
+    }
+    private void OnMouseExit() {
+        _canClick = false;
     }
     public void ChangeSprite(Sprite sprite)
     {

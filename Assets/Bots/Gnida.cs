@@ -7,17 +7,9 @@ public class Gnida : Bot
     public override Vector2Int GetBotDecision(CellType[,] field,int inARowToWin)
     {
         int fieldSize = field.GetLength(0);
-        List<Vector2Int>possibleDecisions = new List<Vector2Int>();
+        List<Vector2Int>possibleDecisions = GetPossibleDecisions(field);
         List<Vector2Int>mainDecisions = new List<Vector2Int>();
         List<Vector2Int>notTooGoodDecisions = new List<Vector2Int>();
-        for (int x = 0;x<fieldSize;x++)
-        {
-            for (int y = 0;y<fieldSize;y++)
-            {
-                if (field[x,y]==CellType.Empty)
-                    possibleDecisions.Add(new Vector2Int(x,y));
-            }
-        }
         foreach (Vector2Int possibleDecision in possibleDecisions)
             {
                 Array AllCellTypes = Enum.GetValues(typeof(CellType));

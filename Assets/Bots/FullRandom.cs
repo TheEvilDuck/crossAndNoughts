@@ -5,16 +5,8 @@ public class FullRandom : Bot
 {
     public override Vector2Int GetBotDecision(CellType[,] field, int inARowToWin)
     {
-        List<Vector2Int>_possibleDecisions = new List<Vector2Int>();
-        for (int x = 0;x<field.GetLength(0);x++)
-        {
-            for (int y = 0;y<field.GetLength(1);y++)
-            {
-                if (field[x,y]==CellType.Empty)
-                    _possibleDecisions.Add(new Vector2Int(x,y));
-            }
-        }
-        int randomIndex = UnityEngine.Random.Range(0,_possibleDecisions.Count-1);
-        return _possibleDecisions[randomIndex];
+        List<Vector2Int>possibleDecisions = GetPossibleDecisions(field);
+        int randomIndex = UnityEngine.Random.Range(0,possibleDecisions.Count-1);
+        return possibleDecisions[randomIndex];
     }
 }

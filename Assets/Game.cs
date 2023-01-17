@@ -7,13 +7,14 @@ using System.Linq;
 public class Game : MonoBehaviour
 {
     [SerializeField]Visuals _visuals;
+    [SerializeField]CameraManipulation _cameraManipulation;
     [SerializeField]Bot[] _botsPull;
 
-    int _playersCount = 2;
-    int _fieldSize = 3;
-    int _inARowToWin = 3;
-    int _botsCount = 0;
-    int _botsDifficulty = 0;
+    private int _playersCount = 2;
+    private int _fieldSize = 3;
+    private int _inARowToWin = 3;
+    private int _botsCount = 0;
+    private int _botsDifficulty = 0;
     
 
     private Player[] _players;
@@ -44,12 +45,19 @@ public class Game : MonoBehaviour
         _cellsLeft = _fieldSize*_fieldSize;
         _players = new Player[_playersCount];
         _field = new CellType[_fieldSize,_fieldSize];
+
+        _cameraManipulation.ResetCamera();
         
         DefineCellTypesForPlayers();
         AddListenersToOnFieldClicked();
+        
         DefineBots();
         _visuals.UpdateCurrentPlayerImage(_players[_currentPlayerId]._cellType);
-        _visuals.UpdateText(string.Format("Now player's {0} turn",_currentPlayerId+1));
+        string bot = "";
+        if (!_players[_currentPlayerId]._isHuman)
+            bot = "(Bot)";
+        _visuals.UpdateText(string.Format("Now player's {0} {1} turn. ",_currentPlayerId+1,bot));
+        
         if (!_players[_currentPlayerId]._isHuman)
             BotTurn();
     }
@@ -81,9 +89,12 @@ public class Game : MonoBehaviour
             for (int y = 0;y<_fieldSize;y++)
             {
                 _field[x,y] = CellType.Empty;
+                if (cells[x,y]==null)continue;
                 cells[x,y]._cellClicked.AddListener((x,y)=>
                 {
-                    if (_players[_currentPlayerId]._isHuman)
+                    if (_players[_currentPlayerId]._isHuman
+                    &&!_cameraManipulation.GetCameraManipulating()
+                    )
                         Turn(x,y);
                 });
             }
@@ -134,6 +145,8 @@ public class Game : MonoBehaviour
                 if (_bots[i]._playerId==_currentPlayerId)
                     {
                         Vector2Int decision = _bots[i].GetBotDecision(_field,_inARowToWin);
+                        if (decision == null)
+                        yield break;
                         Turn(decision.x,decision.y);
                     }
             }
@@ -145,11 +158,13 @@ public class Game : MonoBehaviour
         if (_field[x,y]!=CellType.Empty) return;
         Debug.Log(string.Format("Player {0}({2}) turn. Is it a bot: {1}",_currentPlayerId,!_players[_currentPlayerId]._isHuman,_players[_currentPlayerId]._cellType));
         ChangeCell(x,y);
-        if (CheckRow(x,y))
+        List<Vector2Int>row = new List<Vector2Int>();
+        if (CheckRow(x,y,ref row))
         {
             Debug.Log(string.Format("Player {0} win",_currentPlayerId));
             _visuals.UpdateText(string.Format("Player {0} win!",_currentPlayerId+1));
             _cellsLeft = 0;
+            _visuals.WinRowChangeColor(row);
             return;
         }
         else
@@ -168,7 +183,7 @@ public class Game : MonoBehaviour
             string bot = "";
             if (!_players[_currentPlayerId]._isHuman)
                 bot = "(Bot)";
-            _visuals.UpdateText(string.Format("Now player's {0} {1} turn",_currentPlayerId+1,bot));
+            _visuals.UpdateText(string.Format("Now player's {0} {1} turn. ",_currentPlayerId+1,bot));
             if (!_players[_currentPlayerId]._isHuman)
                 BotTurn();
         }
@@ -180,15 +195,36 @@ public class Game : MonoBehaviour
         _visuals.UpdateVisuals(x,y,_players[_currentPlayerId]._cellType);
             
     }
-    private bool CheckRow(int xFrom,int yFrom)
+    private bool CheckRow(int xFrom,int yFrom,ref List<Vector2Int> row)
     {
-        return
-        (1+GetInARowOfLineInDirection(xFrom,yFrom,1,0)+GetInARowOfLineInDirection(xFrom,yFrom,-1,0)>=_inARowToWin)||
-        (1+GetInARowOfLineInDirection(xFrom,yFrom,0,1)+GetInARowOfLineInDirection(xFrom,yFrom,0,-1)>=_inARowToWin)||
-        (1+GetInARowOfLineInDirection(xFrom,yFrom,1,1)+GetInARowOfLineInDirection(xFrom,yFrom,-1,-1)>=_inARowToWin)||
-        (1+GetInARowOfLineInDirection(xFrom,yFrom,1,-1)+GetInARowOfLineInDirection(xFrom,yFrom,-1,1)>=_inARowToWin);
+        /*return
+        (1+GetInARowOfLineInDirection(xFrom,yFrom,1,0,ref row)+GetInARowOfLineInDirection(xFrom,yFrom,-1,0,ref row)>=_inARowToWin)||
+        (1+GetInARowOfLineInDirection(xFrom,yFrom,0,1,ref row)+GetInARowOfLineInDirection(xFrom,yFrom,0,-1,ref row)>=_inARowToWin)||
+        (1+GetInARowOfLineInDirection(xFrom,yFrom,1,1,ref row)+GetInARowOfLineInDirection(xFrom,yFrom,-1,-1,ref row)>=_inARowToWin)||
+        (1+GetInARowOfLineInDirection(xFrom,yFrom,1,-1,ref row)+GetInARowOfLineInDirection(xFrom,yFrom,-1,1,ref row)>=_inARowToWin);
+        */
+        Vector2Int[]directions = new Vector2Int[4];
+        directions[0] = new Vector2Int(1,0);
+        directions[1] = new Vector2Int(0,1);
+        directions[2] = new Vector2Int(1,1);
+        directions[3] = new Vector2Int(1,-1);
+
+        for (int i = 0;i<4;i++)
+        {
+            row.Clear();
+            row.Add(new Vector2Int(xFrom,yFrom));
+            int inARow = 
+            GetInARowOfLineInDirection(xFrom,yFrom,directions[i].x,directions[i].y,ref row)+
+            GetInARowOfLineInDirection(xFrom,yFrom,-directions[i].x,-directions[i].y,ref row);
+            if (1+inARow>=_inARowToWin)
+                return true;
+        }
+        return false;
+
+
+
     }
-    private int GetInARowOfLineInDirection(int xFrom,int yFrom,int xDirection,int yDirection)
+    private int GetInARowOfLineInDirection(int xFrom,int yFrom,int xDirection,int yDirection,ref List<Vector2Int> row)
     {
         int inARow = 0;
 
@@ -198,7 +234,10 @@ public class Game : MonoBehaviour
         while (x>=0&&y>=0&&x<_fieldSize&&y<_fieldSize)
         {
             if (_field[x,y] == _players[_currentPlayerId]._cellType)
-                    inARow++;
+                    {
+                        inARow++;
+                        row.Add(new Vector2Int(x,y));
+                    }
             else break;
             x+=xDirection;
             y+=yDirection;
